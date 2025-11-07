@@ -1,4 +1,4 @@
-🌏 [Chinese](./ReadMe.md) / English
+🌏 [Chinese](./README.md) / English
 
 # Grim Dawn Quest and Dialogue Text Extraction Tool
 
