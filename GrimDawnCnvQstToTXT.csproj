@@ -17,6 +17,16 @@
     <PublishTrimmed>false</PublishTrimmed> <!-- Windows Forms不支持剪裁 -->
     <SelfContained>false</SelfContained> <!-- 依赖式发布，需要目标机器安装.NET运行时 -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    
+    <!-- 确保图标在单文件模式下正确显示 -->
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <SatelliteResourceLanguages>en;zh</SatelliteResourceLanguages>
   </PropertyGroup>
+
+  <!-- 明确将app.ico添加为嵌入式资源 -->
+  <ItemGroup>
+    <None Remove="app.ico" />
+    <EmbeddedResource Include="app.ico" />
+  </ItemGroup>
 
 </Project>

@@ -3,16 +3,15 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
-using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-
-using System.Reflection;
 using System.IO;
+using System.Reflection;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace GrimDawnCnvQstToTXT
 {
@@ -21,20 +20,21 @@ namespace GrimDawnCnvQstToTXT
         private string currentLanguage = "cn";
         private string outputChoice = "custom1";
         private BackgroundWorker backgroundWorker;
+        private const string VERSION = "v0.8";
 
         // 语言资源字典
         private Dictionary<string, Dictionary<string, string>> language = new Dictionary<string, Dictionary<string, string>>()
         {
             { "topTitle", new Dictionary<string, string>()
                 {
-                    { "cn", "恐怖黎明任务和对话文本提取工具v0.7 by:老张allif 2025-04-24" },
-                    { "en", "Grim Dawn Quests and Conversations Extraction Tool v0.7 by:laozhangggg 2025-04-24" }
+                    { "cn", "恐怖黎明任务和对话文本提取工具" },
+                    { "en", "Grim Dawn Quests and Conversations Extraction Tool"}
                 }
             },
             { "bigTitle", new Dictionary<string, string>()
                 {
-                    { "cn", "恐怖黎明任务和对话文本提取工具v0.7" },
-                    { "en", "Grim Dawn Quests and Conversations Extraction Tool v0.7" }
+                    { "cn", "恐怖黎明任务和对话文本提取工具" },
+                    { "en", "Grim Dawn Quests and Conversations Extraction Tool"}
                 }
             },
             { "inDir", new Dictionary<string, string>()
@@ -153,8 +153,8 @@ namespace GrimDawnCnvQstToTXT
             },
             { "introduction", new Dictionary<string, string>()
                 {
-                    { "cn", "本工具可以提取恐怖黎明任务文本、对话文本；\n浏览、粘贴、拖放目录后，会自动寻找该目录及不限级子目录下的.qst和.cnv文件；\n工具将自动转换2种文件为同名的txt文件，至对应目录下，请自行选择存放目录；\n将Conversations.arc和quests.arc解包后，可以直接把resources的完整路径粘贴过来，点击开始即可同时处理2种文件；\n如有问题请联系 laozhangggg@gmail.com。" },
-                    { "en", "This tool extracts quests and conversations from Grim Dawn.\nAfter browsing, pasting, dragging and dropping the directory, it will automatically search for .qst and .cnv files within that directory and its subdirectories.\nThe tool will convert these two file types into txt files with the same names and save them in the corresponding directories. Please choose your preferred output location.\nAfter extracting Conversations.arc and Quests.arc, you can directly paste the full path of the 'resources' folder and Click Start to process 2 types of files simultaneously\nFor any issues, please contact laozhangggg@gmail.com." }
+                    { "cn", "本工具可以提取恐怖黎明任务文本、对话文本；\n浏览、粘贴、拖放目录后，会自动寻找该目录及不限级子目录下的.qst和.cnv文件；\n工具将自动转换2种文件为同名的txt文件，至对应目录下，请自行选择存放目录；\n将Conversations.arc和quests.arc解包后，可以直接把resources的完整路径粘贴过来，点击开始即可同时处理2种文件；" },
+                    { "en", "This tool extracts quests and conversations from Grim Dawn.\nAfter browsing, pasting, dragging and dropping the directory, it will automatically search for .qst and .cnv files within that directory and its subdirectories.\nThe tool will convert these two file types into txt files with the same names and save them in the corresponding directories. Please choose your preferred output location.\nAfter extracting Conversations.arc and Quests.arc, you can directly paste the full path of the 'resources' folder and Click Start to process 2 types of files simultaneously" }
                 }
             },
             { "failed", new Dictionary<string, string>()
@@ -185,20 +185,30 @@ namespace GrimDawnCnvQstToTXT
             // 设置图标（需要先添加图标文件）
             try
             {
-                // 从嵌入的资源中加载图标
-                Assembly assembly = Assembly.GetExecutingAssembly();
-                using (Stream stream = assembly.GetManifestResourceStream("GrimDawnCnvQstToTXT.app.ico"))
-                {
-                    if (stream != null)
-                    {
-                        this.Icon = new System.Drawing.Icon(stream);
-                    }
-                }
+                // 直接使用Icon.ExtractAssociatedIcon方法从可执行文件中提取图标
+                // 这是最可靠的方式，特别是在单文件发布模式下
+                this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             }
             catch (Exception ex)
             {
-                // 记录错误，但不影响程序运行
-                Console.WriteLine("Failed to load icon: " + ex.Message);
+                // 如果上面的方法失败，尝试从嵌入资源中加载
+                try
+                {
+                    Assembly assembly = Assembly.GetExecutingAssembly();
+                    // 使用项目命名空间 + 文件名作为资源路径
+                    string resourceName = "GrimDawnCnvQstToTXT.app.ico";
+                    using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+                    {
+                        if (stream != null)
+                        {
+                            this.Icon = new Icon(stream);
+                        }
+                    }
+                }
+                catch (Exception innerEx)
+                {
+                    Console.WriteLine("Failed to load icon from resources: " + innerEx.Message);
+                }
             }
             InitializeUI();
         }
@@ -206,7 +216,7 @@ namespace GrimDawnCnvQstToTXT
         private void InitializeUI()
         {
             this.Text = language["topTitle"][currentLanguage];
-            this.Size = new Size(1000, 850);
+            this.Size = new Size(1000, 750);
             this.StartPosition = FormStartPosition.CenterScreen;
 
             // 设置字体，使用字体回退机制确保在没有SimSun字体的系统上也能正常显示
@@ -228,7 +238,7 @@ namespace GrimDawnCnvQstToTXT
             TableLayoutPanel mainLayout = new TableLayoutPanel();
             mainLayout.Dock = DockStyle.Fill;
             mainLayout.ColumnCount = 1;
-            mainLayout.RowCount = 10;
+            mainLayout.RowCount = 9;
             mainLayout.GrowStyle = TableLayoutPanelGrowStyle.FixedSize;
             mainLayout.Padding = new Padding(10);
             mainLayout.AutoScroll = true;
@@ -240,11 +250,10 @@ namespace GrimDawnCnvQstToTXT
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F)); // 目录输入
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 100F)); // 单选按钮
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F)); // 结果标签
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 40F)); // 文本区域
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50F)); // 文本区域
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F)); // 进度条
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F)); // 开始按钮
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 20F)); // 介绍
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F)); // 作者
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80F)); // 介绍（固定高度，减少与底栏的间距）
 
             // 1. 语言选择（右侧对齐）
             Panel languagePanel = new Panel();
@@ -409,21 +418,41 @@ namespace GrimDawnCnvQstToTXT
             introductionLabel.Font = defaultFont;
             introductionLabel.Dock = DockStyle.Fill;
             introductionLabel.TextAlign = ContentAlignment.TopLeft;
-            introductionLabel.Margin = new Padding(0, 10, 0, 10);
+            introductionLabel.Margin = new Padding(0, 5, 0, 0); // 减小上下边距，特别是下边距
             introductionLabel.AutoSize = false;
             introductionLabel.MaximumSize = new Size(mainLayout.Width - 40, 0);
             // 移除WordWrap属性设置，Label控件没有此属性
             // 使用AutoSize=false和设置合适的大小来实现文本换行
             mainLayout.Controls.Add(introductionLabel, 0, 8);
 
-            // 10. 作者
-            Label authorLabel = new Label();
+            // 10. 底部状态栏
+            StatusStrip statusStrip = new StatusStrip();
+            statusStrip.Name = "statusStrip";
+            statusStrip.Dock = DockStyle.Bottom;
+            this.Controls.Add(statusStrip);
+            
+            // 创建左对齐的作者信息标签
+            ToolStripStatusLabel authorLabel = new ToolStripStatusLabel();
             authorLabel.Name = "authorLabel";
             authorLabel.Text = language["by"][currentLanguage];
-            authorLabel.Font = defaultFont;
-            authorLabel.Dock = DockStyle.Fill;
-            authorLabel.TextAlign = ContentAlignment.MiddleRight;
-            mainLayout.Controls.Add(authorLabel, 0, 9);
+            authorLabel.ForeColor = Color.Gray;
+            authorLabel.Spring = false; // 不自动拉伸
+            authorLabel.Alignment = ToolStripItemAlignment.Left;
+            statusStrip.Items.Add(authorLabel);
+            
+            // 添加弹簧标签填充中间空间，实现两端对齐
+            ToolStripStatusLabel springLabel = new ToolStripStatusLabel();
+            springLabel.Spring = true; // 自动拉伸填充剩余空间
+            statusStrip.Items.Add(springLabel);
+            
+            // 创建右对齐的工具名+版本号标签
+            ToolStripStatusLabel versionLabel = new ToolStripStatusLabel();
+            versionLabel.Name = "versionLabel";
+            versionLabel.Text = string.Format("恐怖黎明任务和对话文本提取工具 {0}", VERSION);
+            versionLabel.ForeColor = Color.Gray;
+            versionLabel.Alignment = ToolStripItemAlignment.Right;
+            versionLabel.Spring = false; // 不自动拉伸
+            statusStrip.Items.Add(versionLabel);
         }
 
         private void InitializeBackgroundWorker()
@@ -574,31 +603,31 @@ namespace GrimDawnCnvQstToTXT
                     try
                     {
                         // 读取文件内容
-                        byte[] binaryContent = File.ReadAllBytes(fullPath);
-                        string content = Encoding.UTF8.GetString(binaryContent, 0, binaryContent.Length);
+                        byte[] binaryContent = File.ReadAllBytes(fullPath); //读取整个文件的所有字节内容
+                        string content = Encoding.UTF8.GetString(binaryContent, 0, binaryContent.Length); //将整个字节数组转换为UTF-8字符串
 
                         // 处理内容
-                        if (content.Contains("enUS"))
+                        if (content.Contains("enUS")) //检查内容是否包含"enUS"字符串
                         {
-                            int index = content.IndexOf("enUS");
-                            content = content.Substring(index + 12);
+                            int index = content.IndexOf("enUS"); //如果包含，找到"enUS"的索引位置
+                            content = content.Substring(index + 12); //从索引位置+12开始截取后续所有内容（跳过"enUS"及其后12个字符）
                         }
 
                         // 处理字节数组
-                        byte[] processedContent = Encoding.UTF8.GetBytes(content);
-                        processedContent = ReplaceBytes(processedContent, Encoding.UTF8.GetBytes("\n"), Encoding.UTF8.GetBytes("{^n}"));
+                        byte[] processedContent = Encoding.UTF8.GetBytes(content); //将处理后的字符串转换为UTF-8字节数组
+                        processedContent = ReplaceBytes(processedContent, Encoding.UTF8.GetBytes("\n"), Encoding.UTF8.GetBytes("{^n}")); //将所有换行符"\n"替换为"{^n}"标记
 
-                        int nullPos = Array.LastIndexOf(processedContent, (byte)0);
+                        int nullPos = Array.LastIndexOf(processedContent, (byte)0); //从处理后的字节数组中查找最后一个出现的空字符(0x00)的索引位置
                         while (nullPos > 3)
                         {
-                            // 替换为换行符
-                            Array.Copy(Encoding.UTF8.GetBytes("\n"), 0, processedContent, nullPos - 3, 1);
+                            // 替换为换行符,将换行符("\n")的UTF-8字节复制到 nullPos - 3 的位置，长度为1
+                            Array.Copy(Encoding.UTF8.GetBytes("\r\n"), 0, processedContent, nullPos - 3, 1);
                             // 填充其他位置为空格
-                            for (int i = nullPos - 2; i <= nullPos; i++)
+                            for (int i = nullPos - 2; i <= nullPos; i++) 
                             {
                                 processedContent[i] = 0x20; // 空格
                             }
-                            nullPos = Array.LastIndexOf(processedContent, (byte)0);
+                            nullPos = Array.LastIndexOf(processedContent, (byte)0); 
                         }
 
                         // 清理内容，过滤无效字符
@@ -608,11 +637,13 @@ namespace GrimDawnCnvQstToTXT
                         // 过滤掉不可打印的Unicode字符
                         utf8Str = Regex.Replace(utf8Str, @"[\uD800-\uDFFF]", ""); // 过滤掉代理对
                         utf8Str = Regex.Replace(utf8Str, @" {2,}", " ");
-                        
+                        // 过滤掉Unicode替换字符�（\ufffd）
+                        utf8Str = Regex.Replace(utf8Str, @"[\ufffd]", "");
                         // 使用更接近Python splitlines()的方式分割行
-                        // 先将\r\n替换为\n，再分割，这样更接近Python的行为
+                        // 先将\r\n替换为\n，再以\n分割为多行存储到lines数组中
                         utf8Str = utf8Str.Replace("\r\n", "\n");
                         utf8Str = utf8Str.Replace("\r", "\n");
+                        //以\n分割为多行存储到lines数组中
                         string[] lines = utf8Str.Split(new[] { '\n' }, StringSplitOptions.None);
                         List<string> cleanedLines = new List<string>();
 
@@ -620,6 +651,7 @@ namespace GrimDawnCnvQstToTXT
                         {
                             // 先移除行首和行尾的空白字符
                             string cleanedLine = line.Trim();
+
                             while (cleanedLine.EndsWith("{^n}"))
                             {
                                 cleanedLine = cleanedLine.Substring(0, cleanedLine.Length - 4);
@@ -628,15 +660,14 @@ namespace GrimDawnCnvQstToTXT
                             {
                                 cleanedLine = cleanedLine.Substring(0, cleanedLine.Length - 3);
                             }
-                            cleanedLine = cleanedLine.Trim();
                             cleanedLines.Add(cleanedLine);
                         }
-
-                        // 重新组合，使用Windows风格的\r\n作为换行符以匹配Python输出
+                        
+                        // 重新组合，使用Windows风格的\r\n作为换行符
                         string utf8StrCleaned = string.Join("\r\n", cleanedLines);
                         if (fileExtension.Equals(".qst", StringComparison.OrdinalIgnoreCase))
                         {
-                            utf8StrCleaned += "\r\n\r\n";
+                            utf8StrCleaned += "\r\n";
                         }
                         else
                         {
@@ -662,11 +693,6 @@ namespace GrimDawnCnvQstToTXT
                             Directory.CreateDirectory(targetDir);
                             outputFilePath = Path.Combine(targetDir, fileNameNoExt + ".txt");
                         }
-
-                        // 最后处理：将单个Unicode替换字符(�)后跟任意换行符格式替换为单个换行符
-                        // 匹配各种换行符格式：\r\n、\r、\n
-                        // 只处理Unicode替换字符，不匹配换行符
-                        utf8StrCleaned = Regex.Replace(utf8StrCleaned, "\ufffd", "");
 
                         // 保存文件，使用不带BOM的UTF-8编码
                         File.WriteAllText(outputFilePath, utf8StrCleaned, new UTF8Encoding(false));
@@ -795,8 +821,25 @@ namespace GrimDawnCnvQstToTXT
             Label introductionLabel = this.Controls.Find("introductionLabel", true).FirstOrDefault() as Label;
             if (introductionLabel != null) introductionLabel.Text = language["introduction"][currentLanguage];
 
-            Label authorLabel = this.Controls.Find("authorLabel", true).FirstOrDefault() as Label;
-            if (authorLabel != null) authorLabel.Text = language["by"][currentLanguage];
+            // 更新状态栏文本
+            StatusStrip statusStrip = this.Controls.Find("statusStrip", true).FirstOrDefault() as StatusStrip;
+            if (statusStrip != null)
+            {
+                // 更新左对齐的作者信息标签
+                ToolStripStatusLabel authorLabel = statusStrip.Items.Find("authorLabel", false).FirstOrDefault() as ToolStripStatusLabel;
+                if (authorLabel != null)
+                {
+                    authorLabel.Text = language["by"][currentLanguage];
+                }
+                
+                // 更新右对齐的工具名+版本号标签
+                ToolStripStatusLabel versionLabel = statusStrip.Items.Find("versionLabel", false).FirstOrDefault() as ToolStripStatusLabel;
+                if (versionLabel != null)
+                {
+                    string toolName = currentLanguage == "cn" ? "恐怖黎明任务和对话文本提取工具" : "Grim Dawn Quests and Conversations Tool";
+                    versionLabel.Text = string.Format("{0} {1}", toolName, VERSION);
+                }
+            }
         }
 
         private byte[] ReplaceBytes(byte[] source, byte[] search, byte[] replace)
