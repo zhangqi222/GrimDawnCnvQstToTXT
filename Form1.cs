@@ -20,7 +20,7 @@ namespace GrimDawnCnvQstToTXT
         private string currentLanguage = "cn";
         private string outputChoice = "custom1";
         private BackgroundWorker backgroundWorker;
-        private const string VERSION = "v0.8";
+        private const string VERSION = "v0.9";
 
         // 语言资源字典
         private Dictionary<string, Dictionary<string, string>> language = new Dictionary<string, Dictionary<string, string>>()
@@ -655,11 +655,14 @@ namespace GrimDawnCnvQstToTXT
                             while (cleanedLine.EndsWith("{^n}"))
                             {
                                 cleanedLine = cleanedLine.Substring(0, cleanedLine.Length - 4);
+                                cleanedLine = cleanedLine.TrimEnd();
                             }
                             while (cleanedLine.EndsWith("{^n"))
                             {
                                 cleanedLine = cleanedLine.Substring(0, cleanedLine.Length - 3);
+                                cleanedLine = cleanedLine.TrimEnd();
                             }
+                            cleanedLine = cleanedLine.TrimEnd();
                             cleanedLines.Add(cleanedLine);
                         }
                         
